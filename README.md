@@ -8,29 +8,29 @@ Java code chi tao hien tuong; shell script lo viec log va thong ke.
 Lenh nen dung khi thuyet trinh:
 
 ```bash
-./scripts/terminal-demo.sh all g1 128
+./scripts/run.sh
 ```
 
 Script se:
 
 - Compile `MemoryGcDemo`.
-- Chay JVM voi `-Xms128m -Xmx128m -Xss256k`.
+- Chay JVM voi `-Xms128m -Xmx128m`.
+- Dung GC mac dinh cua JVM. Tren Java 21 cua may ban la G1.
 - Ghi GC log bang `-Xlog:gc*`.
 - Ghi thong ke Young/Old/Metaspace/GC count bang `jstat -gcutil`.
 - Tinh nhanh tong so GC pause va tong pause time.
 
 Tham so:
 
-- `all|churn|promotion|leak|stack`: kich ban demo.
-- `default|serial|parallel|g1|zgc|shenandoah`: loai GC.
+- `churn|leak`: kich ban demo. Mac dinh la `churn`.
 - `128`: heap size MB.
 
 Mot vai lenh rieng neu muon tu go:
 
 ```bash
-java -Xms128m -Xmx128m -Xss256k -XX:+UseG1GC \
+java -Xms128m -Xmx128m \
   -Xlog:gc*,gc+heap=debug:file=out/gc.log:uptime,level,tags \
-  -cp out/classes MemoryGcDemo all
+  -cp out/classes MemoryGcDemo churn
 
 jstat -gcutil <PID> 1000
 grep -E 'Pause|Full|Concurrent|Heap' out/gc.log
@@ -39,22 +39,19 @@ grep -E 'Pause|Full|Concurrent|Heap' out/gc.log
 ## Chay demo
 
 ```bash
-./scripts/run-demo.sh all g1 128
+./scripts/run.sh churn 128
 ```
 
 Tham so:
 
-- `all|churn|promotion|leak|stack`: kich ban demo.
-- `default|serial|parallel|g1|zgc|shenandoah`: loai GC.
+- `churn|leak`: kich ban demo. Mac dinh la `churn`.
 - `128`: heap size MB, script se dung `-Xms128m -Xmx128m`.
 
-Vi du so sanh GC:
+Vi du chay tung phase:
 
 ```bash
-./scripts/run-demo.sh all serial 128
-./scripts/run-demo.sh all parallel 128
-./scripts/run-demo.sh all g1 128
-./scripts/run-demo.sh all zgc 128
+./scripts/run.sh churn 128
+./scripts/run.sh leak 128
 ```
 
 Moi lan chay se tao thu muc `out/<timestamp>-<scenario>-<gc>-<heap>m/` gom:
@@ -78,7 +75,5 @@ truc quan hon.
 
 ## Y tuong trinh bay
 
-- `churn`: tao nhieu array song ngan, heap tang roi giam sau GC.
-- `promotion`: giu lai mot phan array trong list, old generation tang dan.
-- `leak`: list reachable tang dan, GC khong don duoc object con reference.
-- `stack`: de quy sau voi `-Xss256k`, gay `StackOverflowError`.
+- `churn`: tao nhieu array tren Heap, clear reference, request GC.
+- `leak`: giu array trong static list, GC khong don duoc object con reference.

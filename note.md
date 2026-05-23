@@ -3,26 +3,28 @@
 Chay demo:
 
 ```bash
-./scripts/run.sh all g1 128
+./scripts/run.sh
 ```
 
 Neu dang o trong thu muc `scripts/`:
 
 ```bash
-./run.sh all g1 128
+./run.sh
 ```
 
 Script se in `output=...`. Do la thu muc chua log cua lan chay hien tai.
+Script khong ep loai GC nao. JVM se dung GC mac dinh. Tren may Java 21 cua ban,
+`java -Xlog:gc -version` cho thay GC mac dinh la `Using G1`.
 
 ## app.log
 
 File nay la log do Java in ra, dung de biet chuong trinh dang o phase nao.
 
-- `phase=heap-churn`: tao nhieu object ngan han, de thay Eden tang va Young GC chay.
-- `phase=promotion`: giu lai mot phan object trong `SURVIVORS`, de thay Old Gen tang.
-- `phase=reachable-leak`: giu object trong static list `LEAK`, GC khong don duoc vi van reachable.
-- `phase=stack recursion`: goi de quy sau de tao nhieu stack frame.
-- `StackOverflowError depth=...`: stack day, khong phai loi Heap.
+- `Step 1: Allocate objects on heap`: tao nhieu object bang `new byte[]`.
+- `Step 2: Drop references`: goi `temp.clear()`, object khong con reachable.
+- `Step 3: Request GC`: goi `System.gc()` de yeu cau JVM chay GC.
+- `Observe: GC pause appears in gc.log`: mo `gc.log` de thay pause va heap truoc/sau GC.
+- Scenario phu `leak`: object van nam trong static list `LEAK`, nen GC khong don duoc.
 
 ## jstat.log
 
@@ -42,9 +44,9 @@ Cot quan trong:
 
 Cach noi:
 
-- Khi `heap-churn`, `E` tang roi `YGC` tang: object ngan han duoc don o Young Gen.
-- Khi `promotion`, `O` tang: object song qua nhieu GC bi day len Old Gen.
-- Khi `leak`, sau Full GC ma `O` van cao: object van reachable nen GC khong the don.
+- Khi churn demo chay, `E` tang: object moi dang duoc cap phat tren Heap/Eden.
+- Sau `System.gc()`, `FGC` hoac `GCT` co the tang: JVM da dung chuong trinh de GC.
+- Neu chay `./run.sh leak 128`, sau GC heap van cao hon vi object van reachable.
 
 ## gc.log
 
@@ -53,6 +55,7 @@ File nay la GC log chi tiet cua JVM.
 Tim cac dong:
 
 ```text
+Using G1
 Pause Young
 Pause Full
 77M->10M(128M)
@@ -83,7 +86,6 @@ Dung de ket luan nhanh: trong ca demo JVM da dung ung dung bao nhieu lan va tong
 Demo nay cho thay:
 
 1. Object tao bang `new byte[]` nam tren Heap.
-2. Object ngan han lam Eden tang va kich hoat Young GC.
-3. Object duoc giu reference lau hon co the lam Old Gen tang.
+2. `temp.clear()` lam object khong con reachable.
+3. `System.gc()` chi la request, JVM quyet dinh cach chay GC.
 4. Object van reachable thi GC khong don duoc, day la y tuong memory leak.
-5. De quy sau tao nhieu stack frame va gay `StackOverflowError`.

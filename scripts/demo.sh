@@ -1,54 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCENARIO="${1:-all}"
-GC_KIND="${2:-g1}"
-HEAP_MB="${3:-128}"
+SCENARIO="${1:-churn}"
+HEAP_MB="${2:-128}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLASSES_DIR="$ROOT_DIR/out/classes"
 
-# Đặt mỗi lần chạy vào thư mục riêng để nhật ký từ các thuật toán GC khác nhau
-# có thể được so sánh sau bản demo.
-RUN_ID="$(date +%Y%m%d-%H%M%S)-${SCENARIO}-${GC_KIND}-${HEAP_MB}m"
+# Dat moi lan chay vao thu muc rieng de de doc lai log sau demo.
+RUN_ID="$(date +%Y%m%d-%H%M%S)-${SCENARIO}-defaultgc-${HEAP_MB}m"
 RUN_DIR="$ROOT_DIR/out/$RUN_ID"
 
 mkdir -p "$CLASSES_DIR" "$RUN_DIR"
 
-# Biên dịch trực tiếp với javac; không cần Maven/Gradle cho bản demo này.
+# Bien dich truc tiep voi javac; khong can Maven/Gradle cho demo nay.
 javac -d "$CLASSES_DIR" "$ROOT_DIR/src/MemoryGcDemo.java"
 : > "$RUN_DIR/app.log"
 
-# Chọn thuật toán GC từ đối số CLI thứ hai.
-case "$GC_KIND" in
-    serial) GC_FLAG="-XX:+UseSerialGC" ;;
-    parallel) GC_FLAG="-XX:+UseParallelGC" ;;
-    g1) GC_FLAG="-XX:+UseG1GC" ;;
-    zgc) GC_FLAG="-XX:+UseZGC" ;;
-    shenandoah) GC_FLAG="-XX:+UseShenandoahGC" ;;
-    default) GC_FLAG="" ;;
-    *)
-        echo "Unknown GC kind: $GC_KIND" >&2
-        echo "Use: default, serial, parallel, g1, zgc, shenandoah" >&2
-        exit 2
-        ;;
-esac
-
 JAVA_ARGS=(
-    # Heap cố định giúp dễ dàng quan sát và so sánh hành vi GC.
+    # Heap co dinh giup de quan sat Eden/Old Gen thay doi.
     "-Xms${HEAP_MB}m"
     "-Xmx${HEAP_MB}m"
 
-    # Stack nhỏ giúp StackOverflowError xảy ra nhanh chóng trong bản demo stack.
-    "-Xss256k"
-
-    # Lưu các sự kiện GC chi tiết, bao gồm heap trước/sau GC.
+    # Khong truyen -XX:+Use...GC: JVM tu chon GC mac dinh.
+    # Tren may Java 21 cua ban, -Xlog se ghi "Using G1".
     "-Xlog:gc*,gc+heap=debug:file=$RUN_DIR/gc.log:uptime,level,tags"
 )
-
-if [[ -n "$GC_FLAG" ]]; then
-    JAVA_ARGS+=("$GC_FLAG")
-fi
 
 java "${JAVA_ARGS[@]}" \
     -cp "$CLASSES_DIR" \
@@ -70,7 +47,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "PID=$APP_PID"
-echo "scenario=$SCENARIO gc=$GC_KIND heap=${HEAP_MB}m"
+echo "scenario=$SCENARIO gc=JVM-default heap=${HEAP_MB}m"
 echo "output=$RUN_DIR"
 echo
 
@@ -87,7 +64,7 @@ cleanup
 trap - EXIT
 
 # Keep only GC lines that are useful to explain during the presentation.
-grep -E 'Pause|Full|Concurrent|Heap' "$RUN_DIR/gc.log" > "$RUN_DIR/gc-summary.log" || true
+grep -E 'Using|Pause|Full|Concurrent|Heap' "$RUN_DIR/gc.log" > "$RUN_DIR/gc-summary.log" || true
 
 # Count real pause lines and sum their duration in milliseconds.
 PAUSE_COUNT="$(
