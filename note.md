@@ -1,58 +1,55 @@
-# Note doc logs demo GC
+# Ghi chú: nhật ký demo GC
 
-Chay demo:
+Chạy demo:
 
 ```bash
 ./scripts/run.sh
 ```
 
-Neu dang o trong thu muc `scripts/`:
+Nếu đang ở trong thư mục `scripts/`:
 
 ```bash
 ./run.sh
 ```
 
-Script se in `output=...`. Do la thu muc chua log cua lan chay hien tai.
-Script khong ep loai GC nao. JVM se dung GC mac dinh. Tren may Java 21 cua ban,
-`java -Xlog:gc -version` cho thay GC mac dinh la `Using G1`.
+Script sẽ in `output=...`. Đó là thư mục chứa log của lần chạy hiện tại.
+Script không ép loại GC nào. JVM sẽ dùng GC mặc định. Trên máy Java 21 của bạn,
+`java -Xlog:gc -version` cho thấy GC mặc định là `Using G1`.
 
 ## app.log
 
-File nay la log do Java in ra, dung de biet chuong trinh dang o phase nao.
+File này là log do Java in ra, dùng để biết chương trình đang ở pha nào.
 
-- `Step 1: Allocate objects on heap`: tao nhieu object bang `new byte[]`.
-- `Step 2: Drop references`: goi `temp.clear()`, object khong con reachable.
-- `Step 3: Request GC`: goi `System.gc()` de yeu cau JVM chay GC.
-- `Observe: GC pause appears in gc.log`: mo `gc.log` de thay pause va heap truoc/sau GC.
-- Scenario phu `leak`: object van nam trong static list `LEAK`, nen GC khong don duoc.
+- `Step 1: Allocate objects on heap`: tạo nhiều object bằng `new byte[]`.
+- `Step 2: Drop references`: gọi `temp.clear()`, object không còn reachable.
+- `Step 3: Request GC`: gọi `System.gc()` để yêu cầu JVM chạy GC.
+- `Observe: GC pause appears in gc.log`: mở `gc.log` để thấy pause và heap trước/sau GC.
+- Kịch bản phụ `leak`: object vẫn nằm trong static list `LEAK`, nên GC không dọn được.
 
 ## jstat.log
 
-File nay la thong ke moi giay tu lenh `jstat -gcutil`.
+| Cột    | Tên đầy đủ             | Ý nghĩa                                                                                                                          |
+| ------ | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `S0`   | Survivor Space 0       | Tỉ lệ sử dụng của vùng Survivor 0 trong Young Generation. Đây là nơi lưu các object còn sống sau Young GC.                       |
+| `S1`   | Survivor Space 1       | Tỉ lệ sử dụng của vùng Survivor 1 trong Young Generation. JVM thường luân phiên sử dụng S0 và S1 để chứa object sống sót sau GC. |
+| `E`    | Eden Space             | Tỉ lệ sử dụng của vùng Eden. Đây là nơi hầu hết object mới được cấp phát khi dùng `new`.                                         |
+| `O`    | Old Generation         | Tỉ lệ sử dụng của vùng Old Generation. Các object sống lâu hoặc sống sót qua nhiều lần GC có thể được chuyển vào vùng này.       |
+| `M`    | Metaspace              | Tỉ lệ sử dụng của Metaspace. Vùng này lưu metadata của class, method, runtime information,...                                    |
+| `CCS`  | Compressed Class Space | Tỉ lệ sử dụng của vùng lưu thông tin class khi JVM bật Compressed Class Pointers.                                                |
+| `YGC`  | Young GC Count         | Số lần Young GC đã xảy ra. Young GC chủ yếu dọn vùng Young Generation, đặc biệt là Eden.                                         |
+| `YGCT` | Young GC Time          | Tổng thời gian đã dùng cho Young GC, tính bằng giây.                                                                             |
+| `FGC`  | Full GC Count          | Số lần Full GC đã xảy ra. Full GC thường dọn phạm vi rộng hơn, bao gồm Old Generation và có thể gây pause đáng chú ý.            |
+| `FGCT` | Full GC Time           | Tổng thời gian đã dùng cho Full GC, tính bằng giây.                                                                              |
+| `CGC`  | Concurrent GC Count    | Số lần Concurrent GC đã xảy ra. Đây là các chu kỳ GC chạy đồng thời với chương trình, thường thấy ở các GC hiện đại như G1.      |
+| `CGCT` | Concurrent GC Time     | Tổng thời gian đã dùng cho Concurrent GC, tính bằng giây.                                                                        |
+| `GCT`  | Total GC Time          | Tổng thời gian JVM đã dùng cho tất cả hoạt động GC. Thường xấp xỉ `YGCT + FGCT + CGCT`.                                          |
 
-Cot quan trong:
-
-- `E`: Eden usage %. Object moi thuong duoc cap phat o day.
-- `S0`, `S1`: Survivor space usage %.
-- `O`: Old Gen usage %. Tang khi object song lau hoac leak.
-- `M`: Metaspace usage %.
-- `YGC`: so lan Young GC.
-- `YGCT`: tong thoi gian Young GC, don vi giay.
-- `FGC`: so lan Full GC.
-- `FGCT`: tong thoi gian Full GC, don vi giay.
-- `GCT`: tong thoi gian GC, don vi giay.
-
-Cach noi:
-
-- Khi churn demo chay, `E` tang: object moi dang duoc cap phat tren Heap/Eden.
-- Sau `System.gc()`, `FGC` hoac `GCT` co the tang: JVM da dung chuong trinh de GC.
-- Neu chay `./run.sh leak 128`, sau GC heap van cao hon vi object van reachable.
 
 ## gc.log
 
-File nay la GC log chi tiet cua JVM.
+File này là GC log chi tiết của JVM.
 
-Tim cac dong:
+Tìm các dòng:
 
 ```text
 Using G1
@@ -62,30 +59,30 @@ Pause Full
 49M->37M(128M)
 ```
 
-Cach doc `77M->10M(128M)`:
+Cách đọc `77M->10M(128M)`:
 
-- `77M`: heap used truoc GC.
-- `10M`: heap used sau GC.
-- `128M`: max heap da set bang `-Xmx128m`.
+- `77M`: heap đang dùng trước GC.
+- `10M`: heap đang dùng sau GC.
+- `128M`: kích thước tối đa heap được đặt bằng `-Xmx128m`.
 
-`Pause Young` thuong xuat hien khi Eden day. `Pause Full` xuat hien khi script goi `System.gc()` hoac JVM can don manh hon.
+`Pause Young` thường xuất hiện khi Eden đầy. `Pause Full` xuất hiện khi script gọi `System.gc()` hoặc JVM cần dọn mạnh hơn.
 
 ## gc-summary.log
 
-File nay la ban rut gon tu `gc.log`, chi giu cac dong de thuyet trinh.
+File này là bản rút gọn từ `gc.log`, chỉ giữ các dòng để thuyết trình.
 
-Cuoi script co:
+Cuối script có:
 
-- `pause_count`: so lan GC pause.
-- `pause_total_ms`: tong thoi gian pause tinh bang millisecond.
+- `pause_count`: số lần GC pause.
+- `pause_total_ms`: tổng thời gian pause tính bằng millisecond.
 
-Dung de ket luan nhanh: trong ca demo JVM da dung ung dung bao nhieu lan va tong thoi gian dung la bao lau.
+Dùng để kết luận nhanh: trong ca demo JVM đã dừng ứng dụng bao nhiêu lần và tổng thời gian dừng là bao lâu.
 
-## Cau noi ngan khi thuyet trinh
+## Câu nói ngắn khi thuyết trình
 
-Demo nay cho thay:
+Demo này cho thấy:
 
-1. Object tao bang `new byte[]` nam tren Heap.
-2. `temp.clear()` lam object khong con reachable.
-3. `System.gc()` chi la request, JVM quyet dinh cach chay GC.
-4. Object van reachable thi GC khong don duoc, day la y tuong memory leak.
+1. Object tạo bằng `new byte[]` nằm trên Heap.
+2. `temp.clear()` làm object không còn reachable.
+3. `System.gc()` chỉ là một yêu cầu, JVM quyết định cách chạy GC.
+4. Object vẫn reachable thì GC không dọn được — đó là ý tưởng về memory leak.

@@ -1,31 +1,31 @@
 # Java GC Memory Demo
 
-Demo nay tao ap luc bo nho de quan sat Heap, Stack va Garbage Collector.
-Java code chi tao hien tuong; shell script lo viec log va thong ke.
+Demo này tạo áp lực bộ nhớ để quan sát Heap, Stack và Garbage Collector.
+Mã Java chỉ tạo hiện tượng; shell script lo việc ghi log và thống kê.
 
-## Demo truc tiep tren terminal
+## Demo trực tiếp trên terminal
 
-Lenh nen dung khi thuyet trinh:
+Lệnh nên dùng khi thuyết trình:
 
 ```bash
 ./scripts/run.sh
 ```
 
-Script se:
+Script sẽ:
 
-- Compile `MemoryGcDemo`.
-- Chay JVM voi `-Xms128m -Xmx128m`.
-- Dung GC mac dinh cua JVM. Tren Java 21 cua may ban la G1.
-- Ghi GC log bang `-Xlog:gc*`.
-- Ghi thong ke Young/Old/Metaspace/GC count bang `jstat -gcutil`.
-- Tinh nhanh tong so GC pause va tong pause time.
+- Biên dịch `MemoryGcDemo`.
+- Chạy JVM với `-Xms128m -Xmx128m`.
+- Dùng GC mặc định của JVM. Trên Java 21 của máy bạn là G1.
+- Ghi GC log bằng `-Xlog:gc*`.
+- Ghi thống kê Young/Old/Metaspace/GC count bằng `jstat -gcutil`.
+- Tính nhanh tổng số GC pause và tổng pause time.
 
-Tham so:
+Tham số:
 
-- `churn|leak`: kich ban demo. Mac dinh la `churn`.
-- `128`: heap size MB.
+- `churn|leak`: kịch bản demo. Mặc định là `churn`.
+- `128`: kích thước heap tính bằng MB.
 
-Mot vai lenh rieng neu muon tu go:
+Một vài lệnh riêng nếu muốn tự gõ:
 
 ```bash
 java -Xms128m -Xmx128m \
@@ -36,44 +36,44 @@ jstat -gcutil <PID> 1000
 grep -E 'Pause|Full|Concurrent|Heap' out/gc.log
 ```
 
-## Chay demo
+## Chạy demo
 
 ```bash
 ./scripts/run.sh churn 128
 ```
 
-Tham so:
+Tham số:
 
-- `churn|leak`: kich ban demo. Mac dinh la `churn`.
-- `128`: heap size MB, script se dung `-Xms128m -Xmx128m`.
+- `churn|leak`: kịch bản demo. Mặc định là `churn`.
+- `128`: kích thước heap tính bằng MB, script sẽ dùng `-Xms128m -Xmx128m`.
 
-Vi du chay tung phase:
+Ví dụ chạy từng phase:
 
 ```bash
 ./scripts/run.sh churn 128
 ./scripts/run.sh leak 128
 ```
 
-Moi lan chay se tao thu muc `out/<timestamp>-<scenario>-<gc>-<heap>m/` gom:
+Mỗi lần chạy sẽ tạo thư mục `out/<timestamp>-<scenario>-<gc>-<heap>m/` gồm:
 
-- `gc.log`: log GC that tu JVM voi `-Xlog:gc*`.
-- `jstat.log`: thong ke heap/GC moi giay.
+- `gc.log`: log GC thô từ JVM với `-Xlog:gc*`.
+- `jstat.log`: thống kê heap/GC mỗi giây.
 - `app.log`: marker phase do Java in ra.
-- `gc-summary.log`: cac dong GC quan trong da loc san.
+- `gc-summary.log`: các dòng GC quan trọng đã lọc sẵn.
 
-## Quan sat truc tiep
+## Quan sát trực tiếp
 
-Khi chuong trinh dang chay, terminal se in PID. Co the dung:
+Khi chương trình đang chạy, terminal sẽ in PID. Có thể dùng:
 
 ```bash
 jstat -gcutil <PID> 1000
 jconsole <PID>
 ```
 
-`jstat` hien Young/Old/Metaspace/GC count moi giay. `jconsole` hien bieu do heap
-truc quan hon.
+`jstat` hiển thị Young/Old/Metaspace/GC count mỗi giây. `jconsole` hiển thị biểu đồ heap
+trực quan hơn.
 
-## Y tuong trinh bay
+## Ý tưởng trình bày
 
-- `churn`: tao nhieu array tren Heap, clear reference, request GC.
-- `leak`: giu array trong static list, GC khong don duoc object con reference.
+- `churn`: tạo nhiều array trên Heap, xóa reference, yêu cầu GC.
+- `leak`: giữ array trong static list, GC không dọn được object còn reference.
